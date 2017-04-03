@@ -1,6 +1,5 @@
 import java.io.DataInput;
 import java.io.DataOutput;
-import java.io.EOFException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -89,6 +88,15 @@ public class Node implements Writable {
 
   @Override
   public String toString() {
-      return nodeId + ": " + pageRank;
+      StringBuilder builder = new StringBuilder();
+      builder.append(nodeId);
+      builder.append(" ");
+      builder.append(pageRank);
+      builder.append(" ");
+      for(String link : outlinks){
+          builder.append(link);
+          builder.append(" ");
+      }
+      return builder.toString();
   }
 }
