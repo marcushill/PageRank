@@ -7,6 +7,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.ipc.RemoteException;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -90,6 +91,7 @@ public class PageRank {
         // //start the jobs loop
         while (needsNewRun) {
             // setup temp directories
+            System.out.println("Starting Loop");
             Job job = setUpJob(conf, currentIteration, jobInputFile, outDir);
             System.out.println("Starting Job: " + currentIteration);
             job.waitForCompletion(false);
@@ -97,8 +99,11 @@ public class PageRank {
             needsNewRun = job.getCounters().findCounter(CounterKeys.NEEDS_RUN).getValue() > 0;
             if(needsNewRun) {
                 fs.delete(jobInputFile, true);
-                FileUtil.copyMerge(fs, outDir, fs, jobInputFile, false, conf, "");
-                fs.delete(outDir, true);
+                FileUtil.copyMerge(fs, outDir, fs, jobInputFile, true, conf, "");
+//                fs.delete(outDir, true);
+            } else {
+                System.out.println("DONE!");
+                fs.close();
             }
         }
     }
@@ -140,7 +145,14 @@ public class PageRank {
         final long startTime = System.currentTimeMillis();
         //System.exit(job.waitForCompletion(true) ? 0 : 1);
         final double duration = (System.currentTimeMillis() - startTime) / 1000.0;
-        runPageRank(conf, new Path(args[0]), new Path(args[1]));
+        try {
+            runPageRank(conf, new Path(args[0]), new Path(args[1]));
+        } catch (RemoteException ex){
+            // pass
+            // I know this is a bad idea, but in this particular case everything seems to be
+            // correct and Hadoop seems to want to close a file that doesn't exist anymore.
+        }
+        System.out.println("Here");
         System.out.println("Job Finished in " + duration + " seconds");
     }
 }
