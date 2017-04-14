@@ -63,6 +63,38 @@ public class PageRank {
         return convergence;
     }
 
+    private static void prepOutput(Configuration conf, String outputFile) throws IOException {
+        final Path output = new Path(outputFile);
+        final Path tmpFile = new Path(output, "out/part-r-00000");
+        final FileSystem fs = FileSystem.get(conf);
+
+        FSDataInputStream inFile = fs.open(tmpFile);
+        boolean canRead = true;
+        String line;
+        String[] tokens;
+        Map<String, String> map = new HashMap<>();
+        while (canRead) {
+            try {
+                line = inFile.readLine();
+                if (line == null) {
+                    break;
+                }
+                tokens = line.split(" ");
+                map.put(tokens[0], tokens[2]);
+            } catch (EOFException e) {
+                canRead = false;
+            }
+        }
+        fs.delete(output, true);
+        FSDataOutputStream out = fs.create(output);
+        for(Map.Entry<String, String> entry : map.entrySet()){
+            out.writeChars(entry.getKey());
+            out.writeChar(' ');
+            out.writeChars(entry.getValue());
+            out.writeChar('\n');
+        }
+        out.close();
+    }
 
     public static void runPageRank(Configuration conf, Path inputFile, Path tmpDir)
             throws IOException, InterruptedException, ClassNotFoundException {
@@ -144,7 +176,6 @@ public class PageRank {
         conf.set("mapreduce.output.textoutputformat.separator", " ");
         final long startTime = System.currentTimeMillis();
         //System.exit(job.waitForCompletion(true) ? 0 : 1);
-        final double duration = (System.currentTimeMillis() - startTime) / 1000.0;
         try {
             runPageRank(conf, new Path(args[0]), new Path(args[1]));
         } catch (RemoteException ex){
@@ -152,6 +183,8 @@ public class PageRank {
             // I know this is a bad idea, but in this particular case everything seems to be
             // correct and Hadoop seems to want to close a file that doesn't exist anymore.
         }
+        prepOutput(conf, args[1]);
+        final double duration = (System.currentTimeMillis() - startTime) / 1000.0;
         System.out.println("Here");
         System.out.println("Job Finished in " + duration + " seconds");
     }
